@@ -59,6 +59,8 @@ if __name__=='__main__':
                 f.write(json.dumps(message) + '\n')
                 printMessage(message, temperatureUnit='fahrenheit')
                 publisher.send(message)
+            except ValueError:
+                print('Could not decode JSON! Got: {}'.format(messageJson))
             except KeyboardInterrupt:
                 break
 
