@@ -83,7 +83,7 @@ class TimeSeriesPlot(pg.PlotWidget):
 
         self.viewBox = self.plotItem.vb
 
-        self.plotHandle = None
+        self.plotHandleDict = {}
 
         self.showGrid(x=True, y=True)
 
@@ -110,11 +110,11 @@ class TimeSeriesPlot(pg.PlotWidget):
         axis.setLabel('Time {} (UTC{})'.format(tzName, tzOffset))
         axis.enableAutoSIPrefix(False)
 
-    def update(self, timestamps, data, plotOptions={}):
-        if self.plotHandle is None:
-            self.plotHandle = self.plot(timestamps, data, **plotOptions)
+    def update(self, timestamps, data, plotName='main', plotOptions={}):
+        if plotName not in self.plotHandleDict:
+            self.plotHandleDict[plotName] = self.plot(timestamps, data, **plotOptions)
         else:
-            self.plotHandle.setData(x=timestamps, y=data)
+            self.plotHandleDict[plotName].setData(x=timestamps, y=data)
 
 
 class MainWindow(QtGui.QMainWindow):
@@ -140,8 +140,10 @@ class MainWindow(QtGui.QMainWindow):
         self.setCentralWidget(self.timeSeriesSplitter)
 
         self.data = {}
+        self.tempData = {}
 
         self.subscriber = Subscriber()
+        self.tempSubscriber = Subscriber(host='tcp://localhost:5558')
 
         # Timer for checking the queue
         self.timer = QtCore.QTimer()
@@ -174,24 +176,36 @@ class MainWindow(QtGui.QMainWindow):
         self.pressurePlot.update(data['time'], data['pressure'], plotOptions={'pen': (255, 127, 0)})
         self.windPlot.update(data['time'], data['wind'], plotOptions={'pen': (0, 0, 255)})
 
+    def plotTempData(self, data):
+        self.tempData = data
+        tempData = data['temperature']
+        if self.tempUnit == 'fahrenheit':
+            tempData = np.array(tempData) * 9./5. + 32
+        self.temperaturePlot.update(data['time'], tempData, plotName='External', plotOptions={'pen': (0, 0, 255)})
+        
     def update(self):
         message = self.subscriber.receive()
         if message is not None:
-            self.appendMessage(message)
+            self.appendMessage(message, self.data)
             self.plotData(self.data)
+        tempMessage = self.tempSubscriber.receive()
+        if tempMessage is not None:
+            print tempMessage
+            self.appendMessage(tempMessage, self.tempData)
+            self.plotTempData(self.tempData)
 
-    def appendMessage(self, message):
+    def appendMessage(self, message, dataDict):
         for key, value in message.iteritems():
-            if key not in self.data:
-                self.data[key] = {}
-            self.data[key].append(value)
+            if key not in dataDict:
+                dataDict[key] = []
+            dataDict[key].append(value)
 
         
 if __name__=='__main__':
     import sys
     import argparse
     parser = argparse.ArgumentParser()
-    parser.add_argument('--filenames', '-f', nargs='+', help='Data filenames')
+    parser.add_argument('--filenames', '-f', nargs='+', default=[], help='Data filenames')
     parser.add_argument('--timezone', '-z', default='US/Eastern')
     parser.add_argument('--tempOffset', type=float, default=-5.0)
     args = parser.parse_args()
@@ -215,6 +229,7 @@ if __name__=='__main__':
 
     app = QtGui.QApplication(sys.argv)
     mainWindow = MainWindow(args.timezone, tempUnit='fahrenheit', tempOffset=args.tempOffset)
-    mainWindow.plotData(data)
+    if data != {}:
+        mainWindow.plotData(data)
     mainWindow.show()
     sys.exit(app.exec_())
