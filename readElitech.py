@@ -113,6 +113,7 @@ class Elitech:
                         if (recordNumber - self.latest) > 1:
                             print('Missed record! Last: {}, Current: {}'.format(self.latest, record[0]))
                         self.latest = recordNumber
+                    f.flush()
                     data = None
                 except KeyboardInterrupt:
                     break
