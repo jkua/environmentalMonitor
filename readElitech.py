@@ -150,7 +150,7 @@ class Elitech:
 
                 if (recordNumber - self.latest) > 1:
                     print('Missed record! Last: {}, Current: {}'.format(self.latest, record[0]))
-                    self.latest = recordNumber
+                self.latest = recordNumber
 
 class Publisher:
     def __init__(self, host='tcp://*:5559'):

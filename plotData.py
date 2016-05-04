@@ -265,6 +265,7 @@ if __name__=='__main__':
     mainWindow = MainWindow(args.timezone, tempUnit='fahrenheit', tempOffset=args.tempOffset, elitechTempOffset=args.elitechTempOffset)
     if data != {}:
         mainWindow.plotData(data)
+    if tempData != {}:
         mainWindow.plotTempData(tempData)
     mainWindow.show()
     sys.exit(app.exec_())
