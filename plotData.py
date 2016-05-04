@@ -118,12 +118,13 @@ class TimeSeriesPlot(pg.PlotWidget):
 
 
 class MainWindow(QtGui.QMainWindow):
-    def __init__(self, tzString, tempUnit='celsius', tempOffset=0.):
+    def __init__(self, tzString, tempUnit='celsius', tempOffset=0., elitechTempOffset=0.):
         super(MainWindow, self).__init__()
 
         self.tzString = tzString
         self.tempUnit = tempUnit
         self.tempOffset = tempOffset
+        self.elitechTempOffset = elitechTempOffset
 
         self.temperaturePlot = TimeSeriesPlot(tzString=self.tzString)
         self.humidityPlot = TimeSeriesPlot(tzString=self.tzString)
@@ -180,7 +181,7 @@ class MainWindow(QtGui.QMainWindow):
         self.tempData = data
         tempData = data['temperature']
         if self.tempUnit == 'fahrenheit':
-            tempData = np.array(tempData) * 9./5. + 32
+            tempData = np.array(tempData) * 9./5. + 32 + self.elitechTempOffset
         self.temperaturePlot.update(data['time'], tempData, plotName='External', plotOptions={'pen': (0, 0, 255)})
         
     def update(self):
@@ -190,7 +191,6 @@ class MainWindow(QtGui.QMainWindow):
             self.plotData(self.data)
         tempMessage = self.tempSubscriber.receive()
         if tempMessage is not None:
-            print tempMessage
             self.appendMessage(tempMessage, self.tempData)
             self.plotTempData(self.tempData)
 
@@ -200,36 +200,50 @@ class MainWindow(QtGui.QMainWindow):
                 dataDict[key] = []
             dataDict[key].append(value)
 
+def loadDataToDict(filename, data):
+    f = open(filename, 'r')
+    for line in f:
+        try:
+            dataDict = json.loads(line.strip())
+            for key, value in dataDict.iteritems():
+                if key not in data:
+                    data[key] = []
+                data[key].append(value)
+        except:
+            print('Error parsing JSON: {}'.format(line.strip()))
+
+    return data
+
         
 if __name__=='__main__':
     import sys
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('--filenames', '-f', nargs='+', default=[], help='Data filenames')
+    parser.add_argument('--tempFilenames', '-t', nargs='+', default=[], help='Temperature data filenames')
     parser.add_argument('--timezone', '-z', default='US/Eastern')
     parser.add_argument('--tempOffset', type=float, default=-5.0)
+    parser.add_argument('--elitechTempOffset', type=float, default=-2.0)
     args = parser.parse_args()
 
     data = {}
     args.filenames = sorted(args.filenames)
     for filename in args.filenames:    
         print('Loading data from {}...'.format(filename))
-        f = open(filename, 'r')
-        for line in f:
-            try:
-                dataDict = json.loads(line.strip())
-                for key, value in dataDict.iteritems():
-                    if key not in data:
-                        data[key] = []
-                    data[key].append(value)
-            except:
-                pass
+        data = loadDataToDict(filename, data)
+
+    tempData = {}
+    args.tempFilenames = sorted(args.tempFilenames)
+    for filename in args.tempFilenames:
+        print('Loading temperature data from {}...'.format(filename))
+        tempData = loadDataToDict(filename, tempData)
 
     print('Done - pushing to display...')
 
     app = QtGui.QApplication(sys.argv)
-    mainWindow = MainWindow(args.timezone, tempUnit='fahrenheit', tempOffset=args.tempOffset)
+    mainWindow = MainWindow(args.timezone, tempUnit='fahrenheit', tempOffset=args.tempOffset, elitechTempOffset=args.elitechTempOffset)
     if data != {}:
         mainWindow.plotData(data)
+        mainWindow.plotTempData(tempData)
     mainWindow.show()
     sys.exit(app.exec_())
