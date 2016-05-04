@@ -238,6 +238,27 @@ if __name__=='__main__':
         print('Loading temperature data from {}...'.format(filename))
         tempData = loadDataToDict(filename, tempData)
 
+        print('Filtering negative values...')
+        if 'temperature' in tempData:
+            numBad = 0
+            numGood = len(tempData['temperature'])
+            newTemp = []
+            newTime = []
+            newIndex = []
+            for temp, timestamp, index in zip(tempData['temperature'], tempData['time'], tempData['index']):
+                if temp > 0:
+                    newTemp.append(temp)
+                    newTime.append(timestamp)
+                    newIndex.append(index)
+                else:
+                    numBad += 1
+
+            print('Found {}/{} ({:.3f}%) bad points!'.format(numBad, numGood, float(numBad)/numGood*100.))
+
+            tempData['temperature'] = newTemp
+            tempData['time'] = newTime
+            tempData['index'] = newIndex
+
     print('Done - pushing to display...')
 
     app = QtGui.QApplication(sys.argv)
