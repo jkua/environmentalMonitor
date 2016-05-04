@@ -118,6 +118,38 @@ class Elitech:
                     break
                 except:
                     pass
+    def dump(self, filename=None, path='.', host=None):
+        if host is not None:
+            publisher = Publisher(host=host)
+        print('Reading data...')
+        data = self.device.get_data()
+        print('Got {} records.'.format(len(data)))
+
+        if filename is None:
+            filename = 'temp_{}.json'.format(data[0][1].strftime('%Y%m%dT%H%M%S'))
+        if path is not None:
+            outputFilename = os.path.join(path, filename)
+        else:
+            outputFilename = filename
+        print('Writing to {}'.format(outputFilename))
+
+        with open(outputFilename, 'w') as f:
+            for record in data:
+                recordNumber, recordDatetime, temperature = record
+                offset = recordDatetime - datetime.datetime(1970, 1, 1)
+                timestamp = offset.days*24*3600 + offset.seconds
+                recordDict = {'index': recordNumber,
+                              'time': timestamp,
+                              'temperature': temperature
+                             }
+                f.write(json.dumps(recordDict) + '\n')
+                print('{}:\t{}\t{:.1f}'.format(recordNumber, recordDatetime.strftime('%Y-%m-%d %H:%M:%S'), temperature))
+                if host is not None:
+                    publisher.send(recordDict)
+
+                if (recordNumber - self.latest) > 1:
+                    print('Missed record! Last: {}, Current: {}'.format(self.latest, record[0]))
+                    self.latest = recordNumber
 
 class Publisher:
     def __init__(self, host='tcp://*:5559'):
@@ -135,15 +167,22 @@ if __name__=='__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('device', help='Specify device, e.g. /dev/tty.wchusbserial')
+    parser.add_argument('--init', default=False, action='store_true')
+    parser.add_argument('--stream', default=False, action='store_true')
+
     args = parser.parse_args()
 
     print('Connecting to {}...'.format(args.device))
     reader = Elitech(args.device)
 
-    print('Initializing...')
-    reader.initialize()
+    if args.init:
+        print('Initializing...')
+        reader.initialize()
 
-    print('Start recorder by pressing and holding the play button for four seconds.')
-    raw_input("Press Enter to continue...")
+        print('Start recorder by pressing and holding the play button for four seconds.')
+        raw_input("Press Enter to continue...")
 
-    reader.record(host='tcp://*:5558')
+    if args.stream:
+        reader.record(host='tcp://*:5558')
+    else:
+        reader.dump()
