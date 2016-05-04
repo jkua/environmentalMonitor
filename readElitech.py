@@ -180,8 +180,8 @@ if __name__=='__main__':
         print('Initializing...')
         reader.initialize()
 
-        print('Start recorder by pressing and holding the play button for four seconds.')
-        raw_input("Press Enter to continue...")
+        print('Start recording by pressing and holding the play button for four seconds, until the play symbol is displayed in the top part of the logger display.')
+        import sys; sys.exit(0)
 
     if args.stream:
         reader.record(host='tcp://*:5558')
