@@ -259,6 +259,14 @@ if __name__=='__main__':
             tempData['time'] = newTime
             tempData['index'] = newIndex
 
+    print('Limiting to last 48 hours')
+    for key in data.keys():
+        if len(data[key]) > 48*3600:
+            data[key] = data[key][-48*3600:]
+    for key in tempData.keys():
+        if len(tempData[key]) > 48*3600:
+            tempData[key] = tempData[key][-48*3600:]
+
     print('Done - pushing to display...')
 
     app = QtGui.QApplication(sys.argv)

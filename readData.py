@@ -46,22 +46,28 @@ if __name__=='__main__':
                         stopbits=serial.STOPBITS_ONE, 
                         timeout=5)  # open serial port
 
-    startTime = time.time()
-    dt = datetime.datetime.fromtimestamp(startTime)
-    outputFilename = 'data_{}.json'.format(dt.strftime('%Y%m%dT%H%M%S'))
+    run = True
+    while run:
+        startTime = time.time()
+        dt = datetime.datetime.fromtimestamp(startTime)
+        outputFilename = 'data_{}.json'.format(dt.strftime('%Y%m%dT%H%M%S'))
 
-    with open(outputFilename, 'w') as f:
-        while 1:
-            try:
-                messageJson = ser.readline()
-                message = json.loads(messageJson)
-                message['time'] = time.time()
-                f.write(json.dumps(message) + '\n')
-                printMessage(message, temperatureUnit='fahrenheit')
-                publisher.send(message)
-            except ValueError:
-                print('Could not decode JSON! Got: {}'.format(messageJson))
-            except KeyboardInterrupt:
-                break
+        with open(outputFilename, 'w') as f:
+            while 1:
+                try:
+                    messageJson = ser.readline()
+                    message = json.loads(messageJson)
+                    message['time'] = time.time()
+                    f.write(json.dumps(message) + '\n')
+                    printMessage(message, temperatureUnit='fahrenheit')
+                    publisher.send(message)
+                    # Start new file
+                    if (datetime.datetime.now().hour == 0) and ((time.time()-startTime) > 4000):
+                        break
+                except ValueError:
+                    print('Could not decode JSON! Got: {}'.format(messageJson))
+                except KeyboardInterrupt:
+                    run = False
+                    break
 
 
